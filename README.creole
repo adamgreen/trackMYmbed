@@ -6,7 +6,7 @@ This project uses submodules for GCC4MBED.  Cloning requires a few more options 
 code.
 
 {{{
-git clone --recursive git@github.com:willrea/trackMYmbed.git
+git clone --recursive git@github.com:adamgreen/trackMYmbed.git
 }}}
 
 These are the quick steps to install GCC4MBED's dependencies (GNU Tools for ARM Embedded Processors):
