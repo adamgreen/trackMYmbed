@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
+#ifdef UNDONE
 #include "config.h"
 #include "ax25.h"
 #include "gps.h"
@@ -51,7 +51,7 @@ void aprs_send()
 #endif
   };
 
-  ax25_send_header(addresses, sizeof(addresses)/sizeof(s_address));
+  ax25_send_header(addresses, sizeof(addresses)/sizeof(addresses[0]));
   ax25_send_byte('/');                // Report w/ timestamp, no APRS messaging. $ = NMEA raw data
   // ax25_send_string("021709z");     // 021709z = 2nd day of the month, 17:09 zulu (UTC/GMT)
   ax25_send_string(gps_time);         // 170915 = 17h:09m:15s zulu (not allowed in Status Reports)
@@ -83,3 +83,4 @@ void aprs_send()
 
   ax25_flush_frame();                 // Tell the modem to go
 }
+#endif // UNDONE

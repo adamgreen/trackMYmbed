@@ -27,7 +27,7 @@
  * Documentation on interrupts:
  * http://www.nongnu.org/avr-libc/user-manual/group__avr__interrupts.html
  */
-
+#ifdef UNDONE
 #include "config.h"
 #include "afsk_avr.h"
 #include "afsk_pic32.h"
@@ -247,3 +247,4 @@ void afsk_debug()
   sample_overruns = 0;
 }
 #endif
+#endif // UNDONE

@@ -78,16 +78,22 @@
 //
 // When launching multiple balloons, use the same APRS_PERIOD in all balloons
 // and set APRS_SLOT so that the packets are spaced equally in time.
-// Eg. for two balloons and APRS_PERIOD = 60, set APRS_SLOT to 0 and 30, 
-// respectively. The first balloon will transmit at 00:00:00, 00:01:00, 
+// Eg. for two balloons and APRS_PERIOD = 60, set APRS_SLOT to 0 and 30,
+// respectively. The first balloon will transmit at 00:00:00, 00:01:00,
 // 00:02:00, etc. and the second balloon will transmit at 00:00:30, 00:01:30,
 // 00:02:30, etc.
-#define APRS_SLOT     0     // seconds. -1 disables slotted transmissions
+#define APRS_SLOT     -1    // seconds. -1 disables slotted transmissions
 #define APRS_PERIOD   60    // seconds
 
 // GPS baud rate (in bits per second). This is also the baud rate at which
 // debug data will be printed out the serial port.
 #define GPS_BAUDRATE  9600
+
+// GPS_TX_PIN is the UART pin used for sending data to the GPS module.
+#define GPS_TX_PIN      p9
+
+// GPS_TX_PIN is the UART pin used for receiving data from the GPS module.
+#define GPS_RX_PIN      p10
 
 
 // --------------------------------------------------------------------------
@@ -194,7 +200,7 @@
 // This is the LED pin (13 on Arduinos). The LED will be on while the AVR is
 // running and off while it's sleeping, so its brightness gives an indication
 // of the CPU activity.
-#define LED_PIN                 13
+#define LED_PIN                 LED1
 
 // Debug info includes printouts from different modules to aid in testing and
 // debugging.
@@ -214,12 +220,11 @@
 // 3. When flashing the firmware, disconnect the GPS from the RX pin or you
 //    will get errors.
 
-// #define DEBUG_GPS    // GPS sentence dump and checksum validation
-// #define DEBUG_AX25   // AX.25 frame dump
-// #define DEBUG_MODEM  // Modem ISR overrun and profiling
-// #define DEBUG_AFSK   // AFSK (modulation) output
-// #define DEBUG_RESET  // AVR reset
-// #define DEBUG_SENS   // Sensors
+#define DEBUG_GPS   1   // GPS sentence dump and checksum validation
+#define DEBUG_AX25  1   // AX.25 frame dump
+#define DEBUG_MODEM 1   // Modem ISR overrun and profiling
+#define DEBUG_AFSK  1   // AFSK (modulation) output
+#define DEBUG_RESET 1   // AVR reset
 
 
 #endif

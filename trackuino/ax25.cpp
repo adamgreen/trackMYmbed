@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
+#ifdef UNDONE
 #include "ax25.h"
 #include "config.h"
 #include "afsk_avr.h"
@@ -194,5 +194,4 @@ ax25_flush_frame()
   afsk_send(packet, packet_size);
   afsk_start();
 }
-
-
+#endif // UNDONE

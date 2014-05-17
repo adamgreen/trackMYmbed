@@ -1,4 +1,5 @@
 /* trackuino copyright (C) 2010  EA5HAV Javi
+ *           copyright (C) 2014         Adam Green (https://github.com/adamgreen)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,6 +19,41 @@
 #ifndef __GPS_H__
 #define __GPS_H__
 
+class GPS
+{
+public:
+    GPS(PinName txPin, PinName rxPin) : m_serial(txPin, rxPin)
+    {
+    }
+
+    void setup(int baudRate)
+    {
+        m_serial.baud(baudRate);
+    }
+
+    int available()
+    {
+        return 1;
+    }
+
+    int readAndDecode()
+    {
+        return 1;
+    }
+
+    uint32_t seconds()
+    {
+        return 0;
+    }
+    float altitude()
+    {
+        return 0.0f;
+    }
+protected:
+    Serial m_serial;
+};
+
+#ifdef UNDONE
 #include <stdint.h>
 
 extern char gps_time[7];       // HHMMSS
@@ -33,5 +69,6 @@ extern float gps_altitude;
 
 void gps_setup();
 bool gps_decode(char c);
+#endif // UNDONE
 
 #endif

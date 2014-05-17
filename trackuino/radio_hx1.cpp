@@ -14,7 +14,7 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-
+#ifdef UNDONE
 #include "config.h"
 #include "pin.h"
 #include "radio_hx1.h"
@@ -43,3 +43,4 @@ void RadioHx1::ptt_off()
 {
   pin_write(PTT_PIN, LOW);
 }
+#endif // UNDONE
