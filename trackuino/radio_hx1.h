@@ -18,13 +18,27 @@
 #ifndef __RADIO_HX1_H__
 #define __RADIO_HX1_H__
 
+#include <mbed.h>
 #include "radio.h"
+#include "radioout.h"
 
-class RadioHx1 : public Radio {
-  public:
-    virtual void setup();
-    virtual void ptt_on();
-    virtual void ptt_off();
+class RadioHx1 : public IRadio
+{
+public:
+    RadioHx1(IRadioOut* pRadioOut, PinName enablePin) : m_enable(enablePin)
+    {
+        m_pRadioOut = pRadioOut;
+        m_enable = 0;
+    }
+
+    // IRadio methods.
+    virtual void enable();
+    virtual void disable();
+    virtual void set(uint16_t outputValue);
+
+protected:
+    DigitalOut m_enable;
+    IRadioOut* m_pRadioOut;
 };
 
-#endif
+#endif // __RADIO_HX1_H__

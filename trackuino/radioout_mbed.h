@@ -1,4 +1,4 @@
-/* trackuino copyright (C) 2010  EA5HAV Javi
+/* trackuino copyright (C) 2014         Adam Green (https://github.com/adamgreen)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -15,16 +15,24 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
 
-#ifdef PIC32MX
-#ifndef __SENSORS_PIC32_H__
-#define __SENSORS_PIC32_H__
+#ifndef __RADIO_OUT_MBED_H__
+#define __RADIO_OUT_MBED_H__
 
-void sensors_setup();
-unsigned long sensors_aref();
-long sensors_internal_temp();
-int sensors_int_lm60();
-int sensors_ext_lm60();
-int sensors_vin();
+#include <mbed.h>
+#include "radioout.h"
 
-#endif // ifndef __SENSORS_PIC32_H__
-#endif // ifdef PIC32MX
+class RadioOutMbed : public IRadioOut
+{
+public:
+    RadioOutMbed(PinName analogPin) : m_output(analogPin)
+    {
+        m_output = 0.5f;
+    }
+
+    // IRadioOut methods.
+    virtual void set(uint16_t outputValue);
+protected:
+    AnalogOut   m_output;
+};
+
+#endif // __RADIO_OUT_MBED_H__

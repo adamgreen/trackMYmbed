@@ -1,4 +1,4 @@
-/* trackuino copyright (C) 2010  EA5HAV Javi
+/* trackuino copyright (C) 2014         Adam Green (https://github.com/adamgreen)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -14,12 +14,9 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
+#include "radioout_mbed.h"
 
-#ifndef __BUZZER_H__
-#define __BUZZER_H__
-
-void buzzer_setup();
-void buzzer_on();
-void buzzer_off();
-
-#endif // ifndef __BUZZER_H__
+void RadioOutMbed::set(uint16_t outputValue)
+{
+    m_output.write_u16(outputValue);
+}

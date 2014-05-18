@@ -1,4 +1,5 @@
 /* trackuino copyright (C) 2010  EA5HAV Javi
+ *           copyright (C) 2014         Adam Green (https://github.com/adamgreen)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,62 +19,82 @@
 #ifndef __AFSK_H__
 #define __AFSK_H__
 
-//#include <p32xxxx.h>
-//#include <plib.h>
-#include <stdint.h>
-#include "config.h"
+#include <assert.h>
+#include <mbed.h>
+#include "radio.h"
+#include "radioout.h"
 
-#define AFSK_ISR extern "C" void __ISR(_TIMER_2_VECTOR, ipl6) T2_IntHandler (void)
-
-// Exported consts
-extern const uint32_t MODEM_CLOCK_RATE;
-extern const uint8_t REST_DUTY;
-extern const uint16_t TABLE_SIZE;
-extern const uint32_t PLAYBACK_RATE;
-
-// Exported vars
-extern const uint8_t afsk_sine_table[];
-
-// Inline functions (this saves precious cycles in the ISR)
-inline uint8_t afsk_read_sample(int phase)
+class Afsk
 {
-  return afsk_sine_table[phase];
-}
+public:
+    Afsk(IRadio* pRadio, uint32_t playbackRate = 38400) : m_pRadio(pRadio)
+    {
+        setRates(playbackRate);
+        m_pDataCurr = m_pDataEnd = NULL;
+    }
 
-inline void afsk_output_sample(uint8_t s)
-{
-  //SetDCOC1PWM(s);
-}
+    void sendData(const void* pData, size_t dataLength)
+    {
+        // User shouldn't call while data is still being sent.
+        assert ( isSendComplete() );
 
-inline void afsk_clear_interrupt_flag()
-{
-//  mT2ClearIntFlag();
-}
+        m_pDataCurr = (const uint8_t*)pData;
+        m_pDataEnd = m_pDataCurr + dataLength;
+        m_phaseDelta = m_phaseDelta1200;
+        m_phase = 0;
+        m_bitPos = 0;
+        m_currentSampleInBaud = 0;
+        m_isSending = true;
+        m_pRadio->enable();
+        m_ticker.attach_us(this, &Afsk::tickerISR, m_sampleInterval);
+    }
 
-#ifdef DEBUG_MODEM
-inline uint16_t afsk_timer_counter()
-{
-  return 0; // UNDONE: (uint16_t) TMR2;
-}
+    bool isSendComplete()
+    {
+        return !m_isSending;
+    }
 
-inline int afsk_isr_overrun()
-{
-  return 0; // UNDONE: (IFS0bits.T2IF);
-}
-#endif
+protected:
+    void setRates(uint32_t playbackRate)
+    {
+        static const size_t tableSize = sizeof(s_sinLookupTable)/sizeof(s_sinLookupTable[0]);
 
+        // mbed Ticker objects use microseconds for interval.
+        m_sampleInterval = 1000000 / playbackRate;
 
-// Exported functions
-void afsk_setup();
-void afsk_send(const uint8_t *buffer, int len);
-void afsk_start();
-bool afsk_flush();
-void afsk_isr();
-void afsk_timer_setup();
-void afsk_timer_start();
-void afsk_timer_stop();
-#ifdef DEBUG_MODEM
-void afsk_debug();
-#endif
+        // The actual baudrate after rounding errors will be:
+        // PLAYBACK_RATE / (integer_part_of((PLAYBACK_RATE * 256) / BAUD_RATE) / 256)
+
+        // Samples per baud (bit) - Fixed point 24.8
+        m_samplesPerBaud = (playbackRate << 8) / BAUD_RATE;
+
+        // At 1200 and 2200 Hz, how many sin() table entries should be stepped over per sample?
+        // Fixed point 25.7
+        m_phaseDelta1200 = (((tableSize * 1200UL) << 7) / playbackRate);
+        m_phaseDelta2200 = (((tableSize * 2200UL) << 7) / playbackRate);
+        m_phaseDeltaSwitch = m_phaseDelta1200 ^ m_phaseDelta2200;
+    }
+    void tickerISR(void);
+
+    Ticker                  m_ticker;
+    IRadio*                 m_pRadio;
+    volatile const uint8_t* m_pDataCurr;
+    volatile const uint8_t* m_pDataEnd;
+    uint32_t                m_sampleInterval;
+    uint32_t                m_samplesPerBaud;   // Fixed point 24.8
+    uint32_t                m_phaseDelta1200;   // Fixed point 25.7
+    uint32_t                m_phaseDelta2200;   // Fixed point 25.7
+    uint32_t                m_phaseDeltaSwitch; // Fixed point 25.7
+    volatile uint32_t       m_phaseDelta;       // Fixed point 25.7
+    volatile uint32_t       m_phase;            // Fixed point 25.7
+    volatile uint32_t       m_currentSampleInBaud;
+    volatile uint32_t       m_bitPos;
+    volatile uint8_t        m_currentByte;
+    volatile bool           m_isSending;
+
+    static const uint16_t   s_sinLookupTable[512];
+
+    enum { BAUD_RATE = 1200 };
+};
 
 #endif // __AFSK_H__

@@ -14,33 +14,22 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-#ifdef UNDONE
-#include "config.h"
-#include "pin.h"
 #include "radio_hx1.h"
-#if (ARDUINO + 1) >= 100
-#  include <Arduino.h>
-#else
-#  include <WProgram.h>
-#endif
 
 
-void RadioHx1::setup()
+void RadioHx1::enable()
 {
-  // Configure pins
-  pinMode(PTT_PIN, OUTPUT);
-  pin_write(PTT_PIN, LOW);
-  pinMode(AUDIO_PIN, OUTPUT);
+    m_enable = 1;
+    // The HX1 takes 5 ms from PTT to full RF, give it 25
+    wait_ms(25);
 }
 
-void RadioHx1::ptt_on()
+void RadioHx1::disable()
 {
-  pin_write(PTT_PIN, HIGH);
-  delay(25);   // The HX1 takes 5 ms from PTT to full RF, give it 25
+    m_enable = 0;
 }
 
-void RadioHx1::ptt_off()
+void RadioHx1::set(uint16_t outputValue)
 {
-  pin_write(PTT_PIN, LOW);
+    m_pRadioOut->set(outputValue);
 }
-#endif // UNDONE

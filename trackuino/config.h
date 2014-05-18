@@ -104,7 +104,7 @@
 // PWM, so the only two options are pins 3 and 11.
 // Pin 11 doubles as MOSI, so I suggest using pin 3 for PWM and leave 11 free
 // in case you ever want to interface with an SPI device.
-#define AUDIO_PIN       3
+#define AUDIO_PIN       p18
 
 // Pre-emphasize the 2200 tone by 6 dB. This is actually done by 
 // de-emphasizing the 1200 tone by 6 dB and it might greatly improve
@@ -116,8 +116,8 @@
 // Radio config (radio_hx1.cpp)
 // --------------------------------------------------------------------------
 
-// This is the PTT pin
-#define PTT_PIN           4
+// This is the enable pin
+#define HX1_ENABLE_PIN  p20
 
 // --------------------------------------------------------------------------
 // Sensors config (sensors.cpp)
