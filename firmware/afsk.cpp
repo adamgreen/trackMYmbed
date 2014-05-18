@@ -32,7 +32,7 @@
 #include "config.h"
 
 
-const uint16_t Afsk::s_sinLookupTable[512] =
+const uint16_t AFSK::s_sinLookupTable[512] =
 {
     32767, 33169, 33571, 33973, 34375, 34776, 35178, 35578, 35979, 36379, 36778, 37177, 37575, 37972, 38369, 38765,
     39160, 39554, 39946, 40338, 40729, 41118, 41507, 41893, 42279, 42663, 43046, 43427, 43806, 44184, 44560, 44934,
@@ -69,7 +69,7 @@ const uint16_t Afsk::s_sinLookupTable[512] =
 };
 
 
-void Afsk::tickerISR(void)
+void AFSK::tickerISR(void)
 {
     static const uint32_t oneInFixed24_8 = (1 << 8);
     static const size_t   tableSize = sizeof(s_sinLookupTable)/sizeof(s_sinLookupTable[0]);
@@ -82,28 +82,27 @@ void Afsk::tickerISR(void)
     uint8_t               currentByte = m_currentByte;
 
     // If sent all samples for bit then only a fractional residual will be left in m_currentSampleInBaud.
+    // Also triggers on first bit in stream so that it gets primed correctly.
     if (currentSampleInBaud < oneInFixed24_8)
     {
+        if (m_bitCount-- == 0)
+        {
+            // All bits have been sent.
+            m_ticker.detach();
+            m_pRadio->disable();
+            m_isSending = false;
+            return;
+        }
+
         // Just advancing to next most significant bit in current byte or to next byte in data?
         if (bitPos == 0)
         {
-            volatile const uint8_t* pDataCurr = m_pDataCurr;
-
-            // Advancing to next byte.
-            if (pDataCurr >= m_pDataEnd)
-            {
-                // All bytes have been sent.
-                m_ticker.detach();
-                m_pRadio->disable();
-                m_isSending = false;
-                return;
-            }
-            currentByte = *pDataCurr;
-            m_pDataCurr = pDataCurr + 1;
+            // Fetch next byte from data buffer.
+            currentByte = *m_pDataCurr++;
         }
         else
         {
-            // Advance to next bit.  Send lsb to msb.
+            // Advance to next bit.  Send in lsb to msb order.
             currentByte >>= 1;
         }
 

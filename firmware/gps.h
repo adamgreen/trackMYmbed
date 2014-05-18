@@ -19,6 +19,23 @@
 #ifndef __GPS_H__
 #define __GPS_H__
 
+struct GPSData
+{
+    float    lat;
+    float    lon;
+    float    course;
+    float    speed;
+    float    altitude;
+    // seconds after midnight
+    uint32_t seconds;
+    // HHMMSS
+    char     time[7];
+    // DDMMYY
+    char      date[7];
+    char      aprs_lat[9];
+    char      aprs_lon[10];
+};
+
 class GPS
 {
 public:

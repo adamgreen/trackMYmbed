@@ -21,7 +21,6 @@
 #include "config.h"
 #include "radio_hx1.h"
 #include "radioout_mbed.h"
-#include "afsk.h"
 #include "aprs.h"
 #include "gps.h"
 
@@ -32,10 +31,9 @@
 // Module variables
 static int32_t      g_nextAPRS;
 static Timer        g_timer;
-static DigitalOut   g_led(LED_PIN);
 static RadioOutMbed g_radioOut(AUDIO_PIN);
 static RadioHx1     g_radio(&g_radioOut, HX1_ENABLE_PIN);
-static Afsk         g_afsk(&g_radio);
+static APRS         g_aprs(&g_radio);
 static GPS          g_gps(GPS_TX_PIN, GPS_RX_PIN);
 
 
@@ -50,20 +48,20 @@ void aprs_send()
 
 void setup()
 {
-    char buffer[1000];
+    GPSData gpsData;
 
     if (DEBUG_RESET)
         printf("RESET\r\n");
 
-    // UNDONE: Just manually testing AFSK class for now.  Later commits will properly wire it in to radio stack.
-    memset(buffer, 0xFF, sizeof(buffer));
-    buffer[0] = 0xFE;
+    // UNDONE: Just manually testing APRS for now.
+    memset(&gpsData, 0, sizeof(gpsData));
     for (;;)
     {
-        g_afsk.sendData(buffer, sizeof(buffer));
-        while (!g_afsk.isSendComplete())
+        g_aprs.send(&gpsData);
+        while (!g_aprs.isSendComplete())
         {
         }
+        wait(1.0f);
     }
 
     g_timer.start();

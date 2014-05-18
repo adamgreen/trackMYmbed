@@ -24,29 +24,29 @@
 #include "radio.h"
 #include "radioout.h"
 
-class Afsk
+class AFSK
 {
 public:
-    Afsk(IRadio* pRadio, uint32_t playbackRate = 38400) : m_pRadio(pRadio)
+    AFSK(IRadio* pRadio, uint32_t playbackRate = 38400) : m_pRadio(pRadio)
     {
         setRates(playbackRate);
-        m_pDataCurr = m_pDataEnd = NULL;
+        m_bitCount = 0;
     }
 
-    void sendData(const void* pData, size_t dataLength)
+    void sendData(const void* pData, size_t bitCount)
     {
         // User shouldn't call while data is still being sent.
         assert ( isSendComplete() );
 
         m_pDataCurr = (const uint8_t*)pData;
-        m_pDataEnd = m_pDataCurr + dataLength;
         m_phaseDelta = m_phaseDelta1200;
         m_phase = 0;
+        m_bitCount = bitCount;
         m_bitPos = 0;
         m_currentSampleInBaud = 0;
         m_isSending = true;
         m_pRadio->enable();
-        m_ticker.attach_us(this, &Afsk::tickerISR, m_sampleInterval);
+        m_ticker.attach_us(this, &AFSK::tickerISR, m_sampleInterval);
     }
 
     bool isSendComplete()
@@ -79,7 +79,6 @@ protected:
     Ticker                  m_ticker;
     IRadio*                 m_pRadio;
     volatile const uint8_t* m_pDataCurr;
-    volatile const uint8_t* m_pDataEnd;
     uint32_t                m_sampleInterval;
     uint32_t                m_samplesPerBaud;   // Fixed point 24.8
     uint32_t                m_phaseDelta1200;   // Fixed point 25.7
@@ -88,6 +87,7 @@ protected:
     volatile uint32_t       m_phaseDelta;       // Fixed point 25.7
     volatile uint32_t       m_phase;            // Fixed point 25.7
     volatile uint32_t       m_currentSampleInBaud;
+    volatile uint32_t       m_bitCount;
     volatile uint32_t       m_bitPos;
     volatile uint8_t        m_currentByte;
     volatile bool           m_isSending;

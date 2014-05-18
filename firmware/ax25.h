@@ -1,4 +1,5 @@
 /* trackuino copyright (C) 2010  EA5HAV Javi
+ *           copyright (C) 2014         Adam Green (https://github.com/adamgreen)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -18,15 +19,49 @@
 #ifndef __AX25_H__
 #define __AX25_H__
 
-struct s_address {
-	char callsign[7];
+#include "afsk.h"
+
+struct AX25Address
+{
+	char          callsign[7];
 	unsigned char ssid;
 };
 
-void ax25_send_header(const struct s_address *addresses, int num_addresses);
-void ax25_send_byte(unsigned char byte);
-void ax25_send_string(const char *string);
-void ax25_send_footer();
-void ax25_flush_frame();
+class AX25
+{
+public:
+    AX25(IRadio* pRadio, uint32_t playbackRate = 38400) : m_afsk(pRadio, playbackRate)
+    {
+        m_packetSize = 0;
+        m_frameOverflow = false;
+    }
+
+    void queueHeader(const AX25Address* pAddresses, int numAddresses);
+    void queueByte(unsigned char byte);
+    void queueString(const char* pString);
+    void queueFooter();
+    void sendFrame();
+    bool isSendComplete()
+    {
+        return m_afsk.isSendComplete();
+    }
+    bool frameOverflowDetected()
+    {
+        return m_frameOverflow;
+    }
+
+protected:
+    void updateCRC(uint8_t bit);
+    void queueRawByte(uint8_t byte);
+    void queueFlag();
+
+    AFSK     m_afsk;
+    uint32_t m_onesInARow;
+    uint16_t m_crc;
+    uint32_t m_packetSize;
+    uint8_t  m_packet[512];
+    bool     m_frameOverflow;
+};
+
 
 #endif

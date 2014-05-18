@@ -117,23 +117,14 @@
 // Debug config
 // --------------------------------------------------------------------------
 
-// This is the LED pin. The LED will be on while the processor is
-// running and off while it's sleeping, so its brightness gives an indication
-// of the CPU activity.
-#define LED_PIN                 LED1
-
 // Debug info includes printouts from different modules to aid in testing and
 // debugging.
 //
 // Set macro to 1 for turning on that debug feature and 0 otherwise.
 //
-// Some of the DEBUG modes may cause invalid modulation, so do NOT forget
-// to turn them off when you put this to real use.
-//
-
 #define DEBUG_GPS   1   // GPS sentence dump and checksum validation
 #define DEBUG_AX25  1   // AX.25 frame dump
-#define DEBUG_RESET 1   // AVR reset
+#define DEBUG_RESET 1   // Processor reset
 
 
 #endif

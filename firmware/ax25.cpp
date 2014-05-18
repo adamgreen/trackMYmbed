@@ -1,4 +1,5 @@
 /* trackuino copyright (C) 2010  EA5HAV Javi
+ *           copyright (C) 2014         Adam Green (https://github.com/adamgreen)
  *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
@@ -14,184 +15,170 @@
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-#ifdef UNDONE
 #include "ax25.h"
 #include "config.h"
-#include "afsk_avr.h"
-#include "afsk_pic32.h"
-#include <stdint.h>
-#if (ARDUINO + 1) >= 100
-#  include <Arduino.h>
-#else
-#  include <WProgram.h>
-#endif
 
-// Module constants
-static const unsigned int MAX_PACKET = 512;  // bytes
 
-// Module globals
-static uint16_t crc;
-static uint8_t ones_in_a_row;
-static uint8_t packet[MAX_PACKET];
-static unsigned int packet_size;
-
-// Module functions
-static void
-update_crc(uint8_t a_bit) 
+void AX25::queueHeader(const AX25Address* pAddresses, int numAddresses)
 {
-  crc ^= a_bit;
-  if (crc & 1)
-    crc = (crc >> 1) ^ 0x8408;  // X-modem CRC poly
-  else
-    crc = crc >> 1;
-}
+    int i;
+    int j;
 
-static void
-send_byte(uint8_t a_byte)
-{
-  uint8_t i = 0;
-  while (i++ < 8) {
-    uint8_t a_bit = a_byte & 1;
-    a_byte >>= 1;
-    update_crc(a_bit);
-    if (a_bit) {
-      // Next bit is a '1'
-      if (packet_size >= MAX_PACKET * 8)  // Prevent buffer overrun
-        return;
-      packet[packet_size >> 3] |= (1 << (packet_size & 7));
-      packet_size++;
-      if (++ones_in_a_row < 5) continue;
+    m_packetSize = 0;
+    m_frameOverflow = false;
+    m_onesInARow = 0;
+    m_crc = 0xffff;
+
+    // Send flags during TX_DELAY milliseconds
+    //  8 bit-flag = 8 bits/flag * 1/1200 secs/bit * 1000 ms/sec = 8000/1200 ms/flag
+    //  TX_DELAY / (8000/1200) = TX_DELAY * 1200 / 8000 = TX_DELAY * 3 / 20
+    for (i = 0; i < TX_DELAY * 3 / 20; i++)
+        queueFlag();
+
+    for (i = 0; i < numAddresses; i++)
+    {
+        // Transmit callsign.
+        for (j = 0; pAddresses[i].callsign[j] ; j++)
+            queueRawByte(pAddresses[i].callsign[j] << 1);
+        // Pad callsign with spaces to a width of 6.
+        for ( ; j < 6; j++)
+            queueRawByte(' ' << 1);
+        // Transmit SSID. Termination signaled with last bit = 1
+        if (i == numAddresses - 1)
+            queueRawByte(('0' + pAddresses[i].ssid) << 1 | 1);
+        else
+            queueRawByte(('0' + pAddresses[i].ssid) << 1);
     }
-    // Next bit is a '0' or a zero padding after 5 ones in a row
-    if (packet_size >= MAX_PACKET * 8)    // Prevent buffer overrun
-      return;
-    packet[packet_size >> 3] &= ~(1 << (packet_size & 7));
-    packet_size++;
-    ones_in_a_row = 0;
-  }
-}
 
-// Exported functions
-void
-ax25_send_byte(uint8_t a_byte)
-{
-  // Wrap around send_byte, but prints debug info
-  send_byte(a_byte);
-#ifdef DEBUG_AX25
-  Serial.print((char)a_byte);
-#endif
-}
+    // Control field: 3 = APRS-UI frame
+    queueRawByte(0x03);
 
-void
-ax25_send_flag()
-{
-  uint8_t flag = 0x7e;
-  int i;
-  for (i = 0; i < 8; i++, packet_size++) {
-    if (packet_size >= MAX_PACKET * 8)  // Prevent buffer overrun
-      return;
-    if ((flag >> i) & 1)
-      packet[packet_size >> 3] |= (1 << (packet_size & 7));
-    else
-      packet[packet_size >> 3] &= ~(1 << (packet_size & 7));
-  }
-}
+    // Protocol ID: 0xf0 = no layer 3 data
+    queueRawByte(0xf0);
 
-void
-ax25_send_string(const char *string)
-{
-  int i;
-  for (i = 0; string[i]; i++) {
-    ax25_send_byte(string[i]);
-  }
-}
+    if (DEBUG_AX25)
+    {
+        // Print source callsign
+        printf("\n%s", pAddresses[1].callsign);
+        if (pAddresses[1].ssid)
+            printf("-%ud", (unsigned int)pAddresses[1].ssid);
+        printf(">");
 
-void
-ax25_send_header(const struct s_address *addresses, int num_addresses)
-{
-  int i, j;
-  packet_size = 0;
-  ones_in_a_row = 0;
-  crc = 0xffff;
-  
-  // Send flags during TX_DELAY milliseconds (8 bit-flag = 8000/1200 ms)
-  for (i = 0; i < TX_DELAY * 3 / 20; i++) {
-    ax25_send_flag();
-  }
-  
-  for (i = 0; i < num_addresses; i++) {
-    // Transmit callsign
-    for (j = 0; addresses[i].callsign[j]; j++)
-      send_byte(addresses[i].callsign[j] << 1);
-    // Transmit pad
-    for ( ; j < 6; j++)
-      send_byte(' ' << 1);
-    // Transmit SSID. Termination signaled with last bit = 1
-    if (i == num_addresses - 1)
-      send_byte(('0' + addresses[i].ssid) << 1 | 1);
-    else
-      send_byte(('0' + addresses[i].ssid) << 1);
-  }
-  
-  // Control field: 3 = APRS-UI frame
-  send_byte(0x03);
-  
-  // Protocol ID: 0xf0 = no layer 3 data
-  send_byte(0xf0);
-
-#ifdef DEBUG_AX25
-  // Print source callsign
-  Serial.println();
-  Serial.print('[');
-  Serial.print(millis());
-  Serial.print("] ");
-  Serial.print(addresses[1].callsign);
-  if (addresses[1].ssid) {
-    Serial.print('-');
-    Serial.print((unsigned int)addresses[1].ssid);
-  }
-  Serial.print('>');
-  // Destination callsign
-  Serial.print(addresses[0].callsign);
-  if (addresses[0].ssid) {
-    Serial.print('-');
-    Serial.print((unsigned int)addresses[0].ssid);
-  }
-  for (i = 2; i < num_addresses; i++) {
-    Serial.print(',');
-    Serial.print(addresses[i].callsign);
-    if (addresses[i].ssid) {
-      Serial.print('-');
-      Serial.print((unsigned int)addresses[i].ssid);
+        // Destination callsign
+        printf("%s", pAddresses[0].callsign);
+        if (pAddresses[0].ssid)
+            printf("-%ud", (unsigned int)pAddresses[0].ssid);
+        for (i = 2; i < numAddresses; i++)
+        {
+            printf(",%s", pAddresses[i].callsign);
+            if (pAddresses[i].ssid)
+                printf("-%ud", (unsigned int)pAddresses[i].ssid);
+        }
+        printf(":");
     }
-  }
-  Serial.print(':');
-#endif
 }
 
-void 
-ax25_send_footer()
+void AX25::queueFlag()
 {
-  // Save the crc so that it can be treated it atomically
-  uint16_t final_crc = crc;
-  
-  // Send the CRC
-  send_byte(~(final_crc & 0xff));
-  final_crc >>= 8;
-  send_byte(~(final_crc & 0xff));
-  
-  // Signal the end of frame
-  ax25_send_flag();
-#ifdef DEBUG_AX25
-  Serial.println();
-#endif
+    static const size_t maxPacket = sizeof(m_packet) * 8;
+    uint8_t             flag = 0x7e;
+
+    for (int i = 0 ; i < 8 ; i++, m_packetSize++)
+    {
+        if (m_packetSize >= maxPacket)
+        {
+            m_frameOverflow = true;
+            return;
+        }
+        if (flag & 1)
+            m_packet[m_packetSize >> 3] |= (1 << (m_packetSize & 7));
+        else
+            m_packet[m_packetSize >> 3] &= ~(1 << (m_packetSize & 7));
+        flag >>= 1;
+    }
 }
 
-void
-ax25_flush_frame()
+void AX25::queueRawByte(uint8_t byte)
 {
-  // Key the transmitter and send the frame
-  afsk_send(packet, packet_size);
-  afsk_start();
+    static const size_t maxPacket = sizeof(m_packet) * 8;
+
+    for (int i = 0 ; i < 8 ; i++)
+    {
+        uint8_t bit = byte & 1;
+        byte >>= 1;
+        updateCRC(bit);
+        if (bit)
+        {
+            // Next bit is a '1'.
+            if (m_packetSize >= maxPacket)
+            {
+                m_frameOverflow = true;
+                return;
+            }
+            m_packet[m_packetSize >> 3] |= (1 << (m_packetSize & 7));
+            m_packetSize++;
+            if (++m_onesInARow < 5)
+                continue;
+        }
+
+        // Next bit is a '0' or a zero padding after 5 ones in a row.
+        if (m_packetSize >= maxPacket)
+        {
+            m_frameOverflow = true;
+            return;
+        }
+        m_packet[m_packetSize >> 3] &= ~(1 << (m_packetSize & 7));
+        m_packetSize++;
+        m_onesInARow = 0;
+    }
 }
-#endif // UNDONE
+
+void AX25::updateCRC(uint8_t bit)
+{
+    m_crc ^= bit;
+    if (m_crc & 1)
+    {
+        // X-modem CRC polynomial.
+        m_crc = (m_crc >> 1) ^ 0x8408;
+    }
+    else
+    {
+        m_crc = m_crc >> 1;
+    }
+}
+
+void AX25::queueByte(unsigned char byte)
+{
+    // Wrap around queueRawByte, but prints debug info.
+    queueRawByte(byte);
+    if (DEBUG_AX25)
+        printf("%c", byte);
+}
+
+void AX25::queueString(const char* pString)
+{
+    while (*pString)
+        queueByte(*pString++);
+}
+
+void AX25::queueFooter()
+{
+    // Save the crc so that it can be treated atomically.
+    uint16_t finalCRC = ~m_crc;
+
+    // Send the CRC
+    queueRawByte(finalCRC & 0xff);
+    finalCRC >>= 8;
+    queueRawByte(finalCRC & 0xff);
+
+    // Signal the end of frame.
+    queueFlag();
+    if (DEBUG_AX25)
+        printf("\n");
+}
+
+void AX25::sendFrame()
+{
+  // Key the transmitter and send the frame.
+  m_afsk.sendData(m_packet, m_packetSize);
+}

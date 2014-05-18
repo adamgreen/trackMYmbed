@@ -18,6 +18,21 @@
 #ifndef __APRS_H__
 #define __APRS_H__
 
-void aprs_send();
+#include "ax25.h"
+#include "gps.h"
+
+class APRS : protected AX25
+{
+public:
+    APRS(IRadio* pRadio, uint32_t playbackRate = 38400) : AX25(pRadio, playbackRate)
+    {
+    }
+
+    void send(const GPSData* pGpsData);
+    bool isSendComplete()
+    {
+        return AX25::isSendComplete();
+    }
+};
 
 #endif
