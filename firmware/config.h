@@ -86,6 +86,9 @@
 // debug data will be printed out the serial port.
 #define GPS_BAUDRATE  9600
 
+// GPS timeout in milliseconds.
+#define VALID_POS_TIMEOUT 2000
+
 // GPS_TX_PIN is the UART pin used for sending data to the GPS module.
 #define GPS_TX_PIN      p9
 

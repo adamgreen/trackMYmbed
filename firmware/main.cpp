@@ -24,17 +24,11 @@
 #include "aprs.h"
 #include "gps.h"
 
-// GPS timeout in milliseconds.
-// Move to config.h
-#define VALID_POS_TIMEOUT 2000
+static Timer g_timer;
 
-// Module variables
-static int32_t      g_nextAPRS;
-static Timer        g_timer;
-static RadioOutMbed g_radioOut(AUDIO_PIN);
-static RadioHx1     g_radio(&g_radioOut, HX1_ENABLE_PIN);
-static APRS         g_aprs(&g_radio);
-static GPS          g_gps(GPS_TX_PIN, GPS_RX_PIN);
+// Forward Declarations
+static bool getGpsData(GPS* pGPS, GPSData* pData);
+static void waitForPreviousSendToComplete(APRS* pAPRS);
 
 
 // UNDONE: Will work on power saving once running on real hardware.
@@ -42,9 +36,15 @@ void power_save(void)
 {
 }
 
-void setup()
+
+int main(void)
 {
-    GPSData gpsData;
+    int32_t      nextAPRS;
+    RadioOutMbed radioOut(AUDIO_PIN);
+    RadioHx1     radio(&radioOut, HX1_ENABLE_PIN);
+    APRS         aprs(&radio);
+    GPS          gps(GPS_TX_PIN, GPS_RX_PIN);
+    GPSData      gpsData;
 
     if (DEBUG_RESET)
         printf("RESET\r\n");
@@ -53,71 +53,60 @@ void setup()
     memset(&gpsData, 0, sizeof(gpsData));
     for (;;)
     {
-        g_aprs.send(&gpsData);
-        while (!g_aprs.isSendComplete())
+        aprs.send(&gpsData);
+        while (!aprs.isSendComplete())
         {
         }
         wait(1.0f);
     }
 
-    g_timer.start();
-    g_gps.setup(GPS_BAUDRATE);
+    gps.setup(GPS_BAUDRATE);
 
     // Do not start until we get a valid time reference
     // for slotted transmissions.
     if (APRS_SLOT >= 0)
     {
-        while (!g_gps.decodeAvailableLines(&gpsData))
+        while (!gps.decodeAvailableLines(&gpsData))
             power_save();
 
-        g_nextAPRS = 1000 * (APRS_PERIOD - (gpsData.seconds + APRS_PERIOD - APRS_SLOT) % APRS_PERIOD);
+        nextAPRS = 1000 * (APRS_PERIOD - (gpsData.seconds + APRS_PERIOD - APRS_SLOT) % APRS_PERIOD);
     }
     else
     {
-        g_nextAPRS = 0;
+        nextAPRS = 0;
     }
+    g_timer.start();
 
-    g_timer.reset();
+    for (;;)
+    {
+        // Time for another APRS frame?
+        if (g_timer.read_ms() >= nextAPRS)
+        {
+            getGpsData(&gps, &gpsData);
+            waitForPreviousSendToComplete(&aprs);
+            aprs.send(&gpsData);
+            g_timer.reset();
+            nextAPRS = APRS_PERIOD * 1000L;
+        }
+        power_save();
+    }
 }
 
-static bool getGpsData(GPSData* pData)
+static bool getGpsData(GPS* pGPS, GPSData* pData)
 {
     // Get a valid position from the GPS
     bool validPosition = false;
     int timeout = g_timer.read_ms();
     do
     {
-        validPosition = g_gps.decodeAvailableLines(pData);
+        validPosition = pGPS->decodeAvailableLines(pData);
     } while ( (g_timer.read_ms() - timeout < VALID_POS_TIMEOUT) && !validPosition) ;
     return validPosition;
 }
 
-static void waitForPreviousSendToComplete()
+static void waitForPreviousSendToComplete(APRS* pAPRS)
 {
-    while (!g_aprs.isSendComplete())
+    while (!pAPRS->isSendComplete())
     {
     }
-}
-
-void loop()
-{
-    GPSData gpsData;
-
-    // Time for another APRS frame?
-    if (g_timer.read_ms() >= g_nextAPRS)
-    {
-        getGpsData(&gpsData);
-        waitForPreviousSendToComplete();
-        g_aprs.send(&gpsData);
-        g_timer.reset();
-        g_nextAPRS = APRS_PERIOD * 1000L;
-    }
-    power_save();
-}
-
-int main(void)
-{
-    setup();
-    for (;;)
-        loop();
 }
