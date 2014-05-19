@@ -6,3 +6,4 @@
 *.elf
 *.hex
 *.map
+firmware/priv_config.h
