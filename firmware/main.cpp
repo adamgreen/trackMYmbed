@@ -37,12 +37,8 @@ static APRS         g_aprs(&g_radio);
 static GPS          g_gps(GPS_TX_PIN, GPS_RX_PIN);
 
 
-// STUB:
+// UNDONE: Will work on power saving once running on real hardware.
 void power_save(void)
-{
-}
-
-void aprs_send()
 {
 }
 
@@ -71,13 +67,10 @@ void setup()
     // for slotted transmissions.
     if (APRS_SLOT >= 0)
     {
-        do
-        {
-            while (!g_gps.available())
-                power_save();
-        } while (!g_gps.readAndDecode());
+        while (!g_gps.decodeAvailableLines(&gpsData))
+            power_save();
 
-        g_nextAPRS = 1000 * (APRS_PERIOD - (g_gps.seconds() + APRS_PERIOD - APRS_SLOT) % APRS_PERIOD);
+        g_nextAPRS = 1000 * (APRS_PERIOD - (gpsData.seconds + APRS_PERIOD - APRS_SLOT) % APRS_PERIOD);
     }
     else
     {
@@ -87,29 +80,39 @@ void setup()
     g_timer.reset();
 }
 
-static void get_pos()
+static bool getGpsData(GPSData* pData)
 {
     // Get a valid position from the GPS
-    int valid_pos = 0;
+    bool validPosition = false;
     int timeout = g_timer.read_ms();
     do
     {
-        if (g_gps.available())
-            valid_pos = g_gps.readAndDecode();
-    } while ( (g_timer.read_ms() - timeout < VALID_POS_TIMEOUT) && ! valid_pos) ;
+        validPosition = g_gps.decodeAvailableLines(pData);
+    } while ( (g_timer.read_ms() - timeout < VALID_POS_TIMEOUT) && !validPosition) ;
+    return validPosition;
+}
+
+static void waitForPreviousSendToComplete()
+{
+    while (!g_aprs.isSendComplete())
+    {
+    }
 }
 
 void loop()
 {
-    // Time for another APRS frame
+    GPSData gpsData;
+
+    // Time for another APRS frame?
     if (g_timer.read_ms() >= g_nextAPRS)
     {
-        get_pos();
-        aprs_send();
+        getGpsData(&gpsData);
+        waitForPreviousSendToComplete();
+        g_aprs.send(&gpsData);
         g_timer.reset();
         g_nextAPRS = APRS_PERIOD * 1000L;
     }
-    power_save(); // Incoming GPS data or interrupts will wake us up
+    power_save();
 }
 
 int main(void)

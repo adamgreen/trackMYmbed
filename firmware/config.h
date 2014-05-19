@@ -92,6 +92,9 @@
 // GPS_TX_PIN is the UART pin used for receiving data from the GPS module.
 #define GPS_RX_PIN      p10
 
+// Size of circular queue used to hold GPS sentences to be processed.  Must be
+// a power of 2.
+#define GPS_QUEUE_SIZE  256
 
 // --------------------------------------------------------------------------
 // Modem / AFSK config
@@ -123,6 +126,7 @@
 // Set macro to 1 for turning on that debug feature and 0 otherwise.
 //
 #define DEBUG_GPS   1   // GPS sentence dump and checksum validation
+#define DEBUG_QUEUE 1   // Track max elements used in queue to see if possible to shrink.
 #define DEBUG_AX25  1   // AX.25 frame dump
 #define DEBUG_RESET 1   // Processor reset
 

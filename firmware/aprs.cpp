@@ -46,11 +46,11 @@ void APRS::send(const GPSData* pGPS)
     queueString(pGPS->time);
     queueByte('h');
     // Lat: 38deg and 22.20 min (.20 are NOT seconds, but 1/100th of minutes)
-    queueString(pGPS->aprs_lat);
+    queueString(pGPS->aprsLatitude);
     // Symbol table
     queueByte('/');
     // Lon: 000deg and 25.80 min
-    queueString(pGPS->aprs_lon);
+    queueString(pGPS->aprsLongitude);
     // Symbol: O=balloon, -=QTH
     queueByte('O');
     // Course (degrees)

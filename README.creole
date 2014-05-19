@@ -20,7 +20,7 @@ These are the quick steps to install GCC4MBED's dependencies (GNU Tools for ARM 
 * You can then run the gcc4mbed/BuildShell script which will be created during the install to properly configure the
   PATH environment variable.  You may want to edit this script to further customize your development environment.
 
-===Important Notes:
+===Important Installation Notes:
 * Some files will fail to install to a FAT based file system.  Extract to a more appropriate file system (ie. NTFS on
   Windows).
 * If the installation should fail, please refer to win_install.log, linux_install.log, or mac_install.log.  It will
