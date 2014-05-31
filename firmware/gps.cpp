@@ -44,16 +44,19 @@ void GPS::serialRxISR()
     {
         char c = m_serial.getc();
         // End the current line with a NULL terminator if this is the first line terminator seen since the start of
-        // the line.  Ignore any line terminators until after starting the next line of text.
+        // the line.  Ignore any line terminators until after starting the next line of text.  Also never copy a
+        // NULL terminator from the serial port to the queue since it will look like a line terminator and isn't a valid
+        // NMEA character either.
         if (c == '\r' || c == '\n')
         {
             if (m_lastChar != '\r' && m_lastChar != '\n')
             {
-                m_queue.enqueue('\0');
-                interlockedIncrement(&m_lineCount);
+                // Only increment line counter if successfully queued up line terminator.
+                if (m_queue.enqueue('\0'))
+                    interlockedIncrement(&m_lineCount);
             }
         }
-        else
+        else if (c != '\0')
         {
             m_queue.enqueue(c);
         }
@@ -91,7 +94,39 @@ bool GPS::decodeAvailableLines(GPSData* pData)
             }
 
             c = m_queue.dequeue();
-        } while ((ret = decode(c, pData)) == false);
+        } while (!decode(c));
+
+        // Valid position scenario:
+        //
+        // 1. The timestamps of the two previous GGA/RMC sentences must match.
+        //
+        // 2. We just processed a known (GGA/RMC) sentence. Suppose the
+        //    contrary: after starting up this module, gga_time and rmc_time
+        //    are both equal (they're both initialized to ""), so (1) holds
+        //    and we wrongly report a valid position.
+        //
+        // 3. The GPS has a valid fix. For some reason, the Venus 634FLPX
+        //    reports 24 deg N, 121 deg E (the middle of Taiwan) until a valid
+        //    fix is acquired:
+        //
+        //    $GPGGA,120003.000,2400.0000,N,12100.0000,E,0,00,0.0,0.0,M,0.0,M,,0000*69 (OK!)
+        //    $GPGSA,A,1,,,,,,,,,,,,,0.0,0.0,0.0*30 (OK!)
+        //    $GPRMC,120003.000,V,2400.0000,N,12100.0000,E,000.0,000.0,280606,,,N*78 (OK!)
+        //    $GPVTG,000.0,T,,M,000.0,N,000.0,K,N*02 (OK!)
+        if (strcmp(m_ggaTime, m_rmcTime) == 0 && m_active)
+        {
+            // Atomically merge data from the two sentences
+            strcpy(pData->time, m_newTime);
+            pData->seconds = m_newSeconds;
+            pData->latitude = m_newLatitude;
+            pData->longitude = m_newLongitude;
+            strcpy(pData->aprsLatitude, m_newAprsLatitude);
+            strcpy(pData->aprsLongitude, m_newAprsLongitude);
+            pData->course = m_newCourse;
+            pData->speed = m_newSpeed;
+            pData->altitude = m_newAltitude;
+            ret = true;
+        }
 
         interlockedDecrement(&m_lineCount);
     }
@@ -99,7 +134,7 @@ bool GPS::decodeAvailableLines(GPSData* pData)
     return ret;
 }
 
-bool GPS::decode(char c, GPSData* pData)
+bool GPS::decode(char c)
 {
     static const nmeaParser unkParsers[] =
     {
@@ -167,42 +202,11 @@ bool GPS::decode(char c, GPSData* pData)
                 strcpy(m_rmcTime, m_newTime);
                 break;
             }
-
-            // Valid position scenario:
-            //
-            // 1. The timestamps of the two previous GGA/RMC sentences must match.
-            //
-            // 2. We just processed a known (GGA/RMC) sentence. Suppose the
-            //    contrary: after starting up this module, gga_time and rmc_time
-            //    are both equal (they're both initialized to ""), so (1) holds
-            //    and we wrongly report a valid position.
-            //
-            // 3. The GPS has a valid fix. For some reason, the Venus 634FLPX
-            //    reports 24 deg N, 121 deg E (the middle of Taiwan) until a valid
-            //    fix is acquired:
-            //
-            //    $GPGGA,120003.000,2400.0000,N,12100.0000,E,0,00,0.0,0.0,M,0.0,M,,0000*69 (OK!)
-            //    $GPGSA,A,1,,,,,,,,,,,,,0.0,0.0,0.0*30 (OK!)
-            //    $GPRMC,120003.000,V,2400.0000,N,12100.0000,E,000.0,000.0,280606,,,N*78 (OK!)
-            //    $GPVTG,000.0,T,,M,000.0,N,000.0,K,N*02 (OK!)
-            if (m_sentenceType != SENTENCE_UNK && strcmp(m_ggaTime, m_rmcTime) == 0 && m_active)
-            {
-                // Atomically merge data from the two sentences
-                strcpy(pData->time, m_newTime);
-                pData->seconds = m_newSeconds;
-                pData->latitude = m_newLatitude;
-                pData->longitude = m_newLongitude;
-                strcpy(pData->aprsLatitude, m_newAprsLatitude);
-                strcpy(pData->aprsLongitude, m_newAprsLongitude);
-                pData->course = m_newCourse;
-                pData->speed = m_newSpeed;
-                pData->altitude = m_newAltitude;
-                ret = true;
-            }
         }
         if (DEBUG_GPS && m_numTokens)
                 printf("\r\n");
         resetForNewLine();
+        ret = true;
         break;
 
     case '*':

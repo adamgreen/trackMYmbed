@@ -60,13 +60,18 @@ public:
         m_serial.attach(this, &GPS::serialRxISR);
     }
 
+    bool hasLinesToDecode()
+    {
+        return m_lineCount > 0;
+    }
+
     bool decodeAvailableLines(GPSData* pData);
 
 
 protected:
     void resetForNewLine();
     void serialRxISR();
-    bool decode(char c, GPSData* pData);
+    bool decode(char c);
     static void parseSentenceType(GPS* pThis, const char * token);
     static void parseTime(GPS* pThis, const char *token);
     static void parseStatus(GPS* pThis, const char *token);

@@ -79,25 +79,36 @@
 // respectively. The first balloon will transmit at 00:00:00, 00:01:00,
 // 00:02:00, etc. and the second balloon will transmit at 00:00:30, 00:01:30,
 // 00:02:30, etc.
-#define APRS_SLOT     -1    // seconds. -1 disables slotted transmissions
+#define APRS_SLOT     0     // seconds. -1 disables slotted transmissions
 #define APRS_PERIOD   60    // seconds
+
+// --------------------------------------------------------------------------
+// GPS config
+// --------------------------------------------------------------------------
 
 // GPS baud rate (in bits per second). This is also the baud rate at which
 // debug data will be printed out the serial port.
 #define GPS_BAUDRATE  9600
 
-// GPS timeout in milliseconds.
-#define VALID_POS_TIMEOUT 2000
-
 // GPS_TX_PIN is the UART pin used for sending data to the GPS module.
 #define GPS_TX_PIN      p9
 
-// GPS_TX_PIN is the UART pin used for receiving data from the GPS module.
+// GPS_RX_PIN is the UART pin used for receiving data from the GPS module.
 #define GPS_RX_PIN      p10
 
 // Size of circular queue used to hold GPS sentences to be processed.  Must be
 // a power of 2.
 #define GPS_QUEUE_SIZE  256
+
+// Should an object be instantiated to fake GPS data for purposes of testing.
+// NOTE: Would never want to launch a balloon with this enabled.
+#define FAKE_GPS_ENABLE 0
+
+// FAKE_GPS_TX_PIN is the UART pin used for sending fake GPS data.
+#define FAKE_GPS_TX_PIN p13
+
+// FAKE_GPS_RX_PIN is the receive pin for FAKE_GPS_TX_PIN UART.
+#define FAKE_GPS_RX_PIN p14
 
 // --------------------------------------------------------------------------
 // Modem / AFSK config
@@ -128,10 +139,10 @@
 //
 // Set macro to 1 for turning on that debug feature and 0 otherwise.
 //
-#define DEBUG_GPS   1   // GPS sentence dump and checksum validation
-#define DEBUG_QUEUE 1   // Track max elements used in queue to see if possible to shrink.
-#define DEBUG_AX25  1   // AX.25 frame dump
-#define DEBUG_RESET 1   // Processor reset
+#define DEBUG_GPS   0   // GPS sentence dump and checksum validation
+#define DEBUG_QUEUE 0   // Track max elements used in queue to see if possible to shrink.
+#define DEBUG_AX25  0   // AX.25 frame dump
+#define DEBUG_RESET 0   // Processor reset
 
 
 #endif

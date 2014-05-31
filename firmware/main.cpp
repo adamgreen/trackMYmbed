@@ -23,16 +23,21 @@
 #include "radioout_mbed.h"
 #include "aprs.h"
 #include "gps.h"
+#include "fakegps.h"
 
 static Timer g_timer;
 
+#if FAKE_GPS_ENABLE
+    static FakeGPS g_fakeGPS(FAKE_GPS_TX_PIN, FAKE_GPS_RX_PIN, GPS_BAUDRATE);
+#endif
+
+
 // Forward Declarations
-static bool getGpsData(GPS* pGPS, GPSData* pData);
 static void waitForPreviousSendToComplete(APRS* pAPRS);
 
 
 // UNDONE: Will work on power saving once running on real hardware.
-void power_save(void)
+void powerSave(void)
 {
 }
 
@@ -49,17 +54,7 @@ int main(void)
     if (DEBUG_RESET)
         printf("RESET\r\n");
 
-    // UNDONE: Just manually testing APRS for now.
     memset(&gpsData, 0, sizeof(gpsData));
-    for (;;)
-    {
-        aprs.send(&gpsData);
-        while (!aprs.isSendComplete())
-        {
-        }
-        wait(1.0f);
-    }
-
     gps.setup(GPS_BAUDRATE);
 
     // Do not start until we get a valid time reference
@@ -67,41 +62,33 @@ int main(void)
     if (APRS_SLOT >= 0)
     {
         while (!gps.decodeAvailableLines(&gpsData))
-            power_save();
+            powerSave();
 
         nextAPRS = 1000 * (APRS_PERIOD - (gpsData.seconds + APRS_PERIOD - APRS_SLOT) % APRS_PERIOD);
     }
     else
     {
-        nextAPRS = 0;
+        nextAPRS = APRS_PERIOD * 1000L;
     }
     g_timer.start();
 
     for (;;)
     {
-        // Time for another APRS frame?
+        // Parse GPS lines as they become available.
+        if (gps.hasLinesToDecode())
+            gps.decodeAvailableLines(&gpsData);
+
+        // Time to send another APRS frame?
         if (g_timer.read_ms() >= nextAPRS)
         {
-            getGpsData(&gps, &gpsData);
             waitForPreviousSendToComplete(&aprs);
             aprs.send(&gpsData);
             g_timer.reset();
             nextAPRS = APRS_PERIOD * 1000L;
         }
-        power_save();
-    }
-}
 
-static bool getGpsData(GPS* pGPS, GPSData* pData)
-{
-    // Get a valid position from the GPS
-    bool validPosition = false;
-    int timeout = g_timer.read_ms();
-    do
-    {
-        validPosition = pGPS->decodeAvailableLines(pData);
-    } while ( (g_timer.read_ms() - timeout < VALID_POS_TIMEOUT) && !validPosition) ;
-    return validPosition;
+        powerSave();
+    }
 }
 
 static void waitForPreviousSendToComplete(APRS* pAPRS)
