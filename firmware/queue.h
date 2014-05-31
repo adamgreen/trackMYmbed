@@ -35,13 +35,13 @@ public:
         m_elementsDropped = 0;
     }
 
-    void enqueue(char c)
+    bool enqueue(char c)
     {
         assert ( m_elementsUsed <= GPS_QUEUE_SIZE );
         if (m_elementsUsed >= GPS_QUEUE_SIZE)
         {
             interlockedIncrement(&m_elementsDropped);
-            return;
+            return false;
         }
 
         uint32_t elementWrite = m_elementWrite;
@@ -50,6 +50,7 @@ public:
         uint32_t usedCount = interlockedIncrement(&m_elementsUsed);
         if (DEBUG_QUEUE && usedCount > m_elementsMax)
             m_elementsMax = usedCount;
+        return true;
     }
     
     char dequeue()
