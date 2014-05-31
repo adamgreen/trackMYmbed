@@ -31,6 +31,7 @@ public:
     {
         setRates(playbackRate);
         m_bitCount = 0;
+        m_isSending = false;
     }
 
     void sendData(const void* pData, size_t bitCount)
