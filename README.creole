@@ -34,3 +34,11 @@ These are the quick steps to install GCC4MBED's dependencies (GNU Tools for ARM 
   may need to install the 32-bit support libraries.  This problem typically shows up as a file not found error when you
   attempt to run tools such as arm-none-eabi-g++.  On Ubuntu, the necessary libraries can be installed by running
   {{{sudo apt-get install ia32-libs}}}
+
+==Configuration
+The tracker can be customized for a user's particular environment via the **firmware/config.h** header file.  It
+includes comments indicating what each setting is used to customize.  There are some settings which a user may want to
+use for their personal builds but not push up to the main repository (ie. their callsign).  If a user just wants to
+customize settings for their own personal build then they can take a copy of the project's default config.h and name it
+**firmware/priv_config.h**.  The trackMYmbed build process will ignore the settings in firmware/config.h and the
+developer's private settings from firmware/priv_config.h will be used instead.
